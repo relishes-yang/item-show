@@ -5,10 +5,19 @@ from PIL import Image
 import os
 from io import BytesIO
 import tempfile
+
+
+# 2. 【核心：全局字体设置，必须在导入pyplot之前执行！】
+import matplotlib
+matplotlib.use('Agg')  # 强制无GUI后端，适配Streamlit
+# 字体优先级：云端开源中文字体 → 本地字体 → 兜底字体，全环境覆盖
+matplotlib.rcParams['font.sans-serif'] = ['WenQuanYi Micro Hei', 'SimHei', 'DejaVu Sans', 'Arial Unicode MS']
+matplotlib.rcParams['axes.unicode_minus'] = False  # 解决负号乱码
+matplotlib.rcParams['font.family'] = 'sans-serif'
+matplotlib.rcParams['font.size'] = 12  # 统一字体大小，避免渲染异常
+
+# 3. 再导入pyplot，此时全局设置已经100%生效
 import matplotlib.pyplot as plt
-# 适配Streamlit Cloud的中文字体（优先用服务器自带的DejaVu Sans）
-plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'WenQuanYi Micro Hei', 'SimHei']
-plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示异常
 
 # 全局工具函数：图片转字节流（只定义这一次！）
 def img_to_bytes(img, is_bgr=True):
