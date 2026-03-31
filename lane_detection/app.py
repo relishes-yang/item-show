@@ -5,6 +5,10 @@ from PIL import Image
 import os
 from io import BytesIO
 import tempfile
+import matplotlib.pyplot as plt
+# 适配Streamlit Cloud的中文字体（优先用服务器自带的DejaVu Sans）
+plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'WenQuanYi Micro Hei', 'SimHei']
+plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示异常
 
 # 全局工具函数：图片转字节流（只定义这一次！）
 def img_to_bytes(img, is_bgr=True):
