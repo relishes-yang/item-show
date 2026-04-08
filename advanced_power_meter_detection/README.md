@@ -36,7 +36,7 @@ venv\Scripts\activate  # Windows
 source venv/bin/activate  # Linux/Mac
 
 # 安装依赖（使用国内镜像加速）
-pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install -r requirements.txt.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
 **注意**：首次运行时会自动下载OCR模型（约100MB）
