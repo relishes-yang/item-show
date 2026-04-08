@@ -126,7 +126,7 @@ for idx, image_name in enumerate(image_files, 1):
     cv2.line(img_original, (x1, y1), (x2, y2), (0, 0, 255), 3)
 
     # 绘制清晰的读数（放在表盘下方，不遮挡刻度）
-    text = f"Pressure Reading: {reading:.2f} kPa"
+    text = f"read: {reading:.2f} kPa"
     text_x = max(10, int(cx - radius * 0.8))
     text_y = min(h - 10, int(cy + radius + 40))
     cv2.putText(img_original, text, (text_x, text_y),
