@@ -1,12 +1,4 @@
-# 基础运行环境（固定稳定版本）
-streamlit==1.30.0
-python-dateutil==2.8.2
-
-# 图像处理核心依赖（专为云环境优化）
-numpy==1.26.3
-pillow==10.2.0
-opencv-python-headless==4.9.0.80
-
-# 若你的代码用到其他库，按下面格式添加，每个库单独一行
-# pandas==2.1.4
-# matplotlib==3.8.2
+streamlit
+numpy
+pillow
+opencv-python-headless
