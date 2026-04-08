@@ -1,7 +1,12 @@
-# 稳定兼容版本
+# 基础运行环境（固定稳定版本）
 streamlit==1.30.0
-numpy==1.26.0
-pillow==10.1.0
+python-dateutil==2.8.2
 
-# 优先安装系统依赖，再装 OpenCV
-opencv-python-headless==4.8.1.78
+# 图像处理核心依赖（专为云环境优化）
+numpy==1.26.3
+pillow==10.2.0
+opencv-python-headless==4.9.0.80
+
+# 若你的代码用到其他库，按下面格式添加，每个库单独一行
+# pandas==2.1.4
+# matplotlib==3.8.2
