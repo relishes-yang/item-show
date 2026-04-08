@@ -1,5 +1,7 @@
-# 必须声明的依赖库（根据你的代码补充）
-streamlit>=1.30.0          # Streamlit 运行环境
-opencv-python>=4.8.0       # 解决 cv2 找不到的问题
-numpy>=1.24.0              # 图像处理常用库（如果用到了就加上）
-pillow>=10.0.0             # 图像读取/处理常用库（如果用到了就加上）
+# 稳定兼容版本
+streamlit==1.30.0
+numpy==1.26.0
+pillow==10.1.0
+
+# 优先安装系统依赖，再装 OpenCV
+opencv-python-headless==4.8.1.78
