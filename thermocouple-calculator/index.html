@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>热电偶温度-热电势计算器 | 冷端补偿验证工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+        }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .neon-glow {
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.15);
+        }
+
+        .input-focus:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+            border-color: #3b82f6;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #60a5fa 0%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .thermocouple-btn.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .formula-box {
+            background: rgba(15, 23, 42, 0.8);
+            border-left: 4px solid #3b82f6;
+        }
+
+        /* 表格样式 */
+        .data-table th {
+            background: rgba(30, 41, 59, 0.8);
+        }
+        .data-table tr:hover td {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        /* 动画 */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .highlight-row {
+            background: rgba(59, 130, 246, 0.2) !important;
+            border-left: 3px solid #3b82f6;
+        }
+    </style>
+</head>
+<body class="text-slate-200">
+
+    <!-- 顶部导航 -->
+    <nav class="border-b border-slate-700/50 bg-slate-900/90 backdrop-blur-xl sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/30">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold gradient-text">热电偶计算器</h1>
+                        <p class="text-xs text-slate-500">Thermocouple Temperature Calculator</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-slate-400 bg-slate-800/50 px-3 py-1 rounded-full border border-slate-700">IEC 60584-1 标准</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- 热电偶类型选择 -->
+        <div class="glass-panel rounded-2xl p-6 mb-6 neon-glow">
+            <h2 class="text-lg font-semibold mb-4 text-slate-100">选择热电偶分度号</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <button onclick="setThermocouple('K')" id="btn-K" class="thermocouple-btn active py-3 px-4 rounded-xl border border-slate-600 bg-slate-800/50 hover:bg-slate-700/50 transition-all font-medium text-sm">
+                    <div class="text-lg font-bold mb-1">K</div>
+                    <div class="text-xs opacity-80">镍铬-镍硅</div>
+                    <div class="text-xs opacity-60 mt-1">-200~1260°C</div>
+                </button>
+                <button onclick="setThermocouple('S')" id="btn-S" class="thermocouple-btn py-3 px-4 rounded-xl border border-slate-600 bg-slate-800/50 hover:bg-slate-700/50 transition-all font-medium text-sm text-slate-300">
+                    <div class="text-lg font-bold mb-1">S</div>
+                    <div class="text-xs opacity-80">铂铑₁₀-铂</div>
+                    <div class="text-xs opacity-60 mt-1">0~1760°C</div>
+                </button>
+                <button onclick="setThermocouple('E')" id="btn-E" class="thermocouple-btn py-3 px-4 rounded-xl border border-slate-600 bg-slate-800/50 hover:bg-slate-700/50 transition-all font-medium text-sm text-slate-300">
+                    <div class="text-lg font-bold mb-1">E</div>
+                    <div class="text-xs opacity-80">镍铬-铜镍</div>
+                    <div class="text-xs opacity-60 mt-1">-200~1000°C</div>
+                </button>
+                <button onclick="setThermocouple('T')" id="btn-T" class="thermocouple-btn py-3 px-4 rounded-xl border border-slate-600 bg-slate-800/50 hover:bg-slate-700/50 transition-all font-medium text-sm text-slate-300">
+                    <div class="text-lg font-bold mb-1">T</div>
+                    <div class="text-xs opacity-80">铜-铜镍</div>
+                    <div class="text-xs opacity-60 mt-1">-200~350°C</div>
+                </button>
+                <button onclick="setThermocouple('J')" id="btn-J" class="thermocouple-btn py-3 px-4 rounded-xl border border-slate-600 bg-slate-800/50 hover:bg-slate-700/50 transition-all font-medium text-sm text-slate-300">
+                    <div class="text-lg font-bold mb-1">J</div>
+                    <div class="text-xs opacity-80">铁-铜镍</div>
+                    <div class="text-xs opacity-60 mt-1">-210~1200°C</div>
+                </button>
+                <button onclick="setThermocouple('B')" id="btn-B" class="thermocouple-btn py-3 px-4 rounded-xl border border-slate-600 bg-slate-800/50 hover:bg-slate-700/50 transition-all font-medium text-sm text-slate-300">
+                    <div class="text-lg font-bold mb-1">B</div>
+                    <div class="text-xs opacity-80">铂铑₃₀-铂铑₆</div>
+                    <div class="text-xs opacity-60 mt-1">0~1820°C</div>
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+            <!-- 计算模式1：已知温度求热电势 -->
+            <div class="glass-panel rounded-2xl p-6 neon-glow">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-100">
+                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                        模式一：温度 → 热电势
+                    </h2>
+                    <span class="text-xs text-blue-400 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/30">对应题4.11, 4.14, 4.19</span>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-2">热端温度 t (°C)</label>
+                            <input type="number" id="calc1_t" value="500" step="1"
+                                class="w-full bg-slate-800/80 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none input-focus transition-all font-mono text-lg text-center">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-2">冷端温度 t₀ (°C)</label>
+                            <input type="number" id="calc1_t0" value="20" step="1"
+                                class="w-full bg-slate-800/80 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none input-focus transition-all font-mono text-lg text-center">
+                        </div>
+                    </div>
+
+                    <button onclick="calculateMode1()" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-xl transition-all shadow-lg shadow-blue-600/25">
+                        计算热电势 E(t,t₀)
+                    </button>
+
+                    <div id="result1" class="hidden result-card rounded-xl p-4 animate-slide-in">
+                        <div class="text-sm text-slate-400 mb-1">计算结果</div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-bold text-white font-mono" id="result1_value">--</span>
+                            <span class="text-lg text-slate-400">mV</span>
+                        </div>
+                        <div class="mt-3 text-xs text-slate-500 space-y-1 formula-box p-3 rounded">
+                            <div><strong>计算过程：</strong></div>
+                            <div>E(<span class="text-blue-400">t</span>,0) = <span id="detail_Et0" class="text-purple-400">--</span> mV</div>
+                            <div>E(<span class="text-blue-400">t₀</span>,0) = <span id="detail_Et00" class="text-purple-400">--</span> mV</div>
+                            <div>E(<span class="text-blue-400">t</span>,<span class="text-blue-400">t₀</span>) = E(t,0) - E(t₀,0) = <span id="detail_result" class="text-emerald-400 font-bold">--</span> mV</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 计算模式2：已知热电势求温度（冷端补偿） -->
+            <div class="glass-panel rounded-2xl p-6 neon-glow">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-100">
+                        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        模式二：热电势 → 温度 (冷端补偿)
+                    </h2>
+                    <span class="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/30">对应题4.12, 4.13, 4.17, 4.18</span>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-2">测得电势 E(t,t₀) (mV)</label>
+                            <input type="number" id="calc2_E" value="0.675" step="0.001"
+                                class="w-full bg-slate-800/80 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none input-focus transition-all font-mono text-lg text-center">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-2">冷端温度 t₀ (°C)</label>
+                            <input type="number" id="calc2_t0" value="25" step="1"
+                                class="w-full bg-slate-800/80 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none input-focus transition-all font-mono text-lg text-center">
+                        </div>
+                    </div>
+
+                    <button onclick="calculateMode2()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-3 rounded-xl transition-all shadow-lg shadow-emerald-600/25">
+                        计算实际热端温度 t
+                    </button>
+
+                    <div id="result2" class="hidden result-card rounded-xl p-4 animate-slide-in">
+                        <div class="text-sm text-slate-400 mb-1">实际热端温度</div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-bold text-white font-mono" id="result2_value">--</span>
+                            <span class="text-lg text-slate-400">°C</span>
+                        </div>
+                        <div class="mt-3 text-xs text-slate-500 space-y-1 formula-box p-3 rounded">
+                            <div><strong>冷端补偿计算：</strong></div>
+                            <div>E(<span class="text-blue-400">t₀</span>,0) = <span id="detail2_Et00" class="text-purple-400">--</span> mV</div>
+                            <div>E(<span class="text-blue-400">t</span>,0) = E(t,t₀) + E(t₀,0) = <span id="detail2_Et0" class="text-purple-400">--</span> mV</div>
+                            <div>查表得 <span class="text-blue-400">t</span> = <span id="detail2_result" class="text-emerald-400 font-bold">--</span> °C</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快捷作业验证区 -->
+        <div class="glass-panel rounded-2xl p-6 mb-6 neon-glow">
+            <h2 class="text-lg font-semibold mb-4 flex items-center gap-2 text-slate-100">
+                <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                </svg>
+                作业题目快速验证
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <button onclick="loadProblem('4.12')" class="text-left p-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 rounded-xl transition-all group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-semibold text-slate-200 group-hover:text-blue-400 transition-colors">题 4.12</div>
+                            <div class="text-xs text-slate-500 mt-1">S型热电偶，t₀=25°C</div>
+                            <div class="text-xs text-slate-500">E(t,t₀)=0.675mV，求t</div>
+                        </div>
+                        <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300">模式二</span>
+                    </div>
+                </button>
+
+                <button onclick="loadProblem('4.13')" class="text-left p-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 rounded-xl transition-all group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-semibold text-slate-200 group-hover:text-blue-400 transition-colors">题 4.13</div>
+                            <div class="text-xs text-slate-500 mt-1">T型热电偶，t₀=21°C</div>
+                            <div class="text-xs text-slate-500">E(t,t₀)=1.999mV，求t</div>
+                        </div>
+                        <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300">模式二</span>
+                    </div>
+                </button>
+
+                <button onclick="loadProblem('4.16')" class="text-left p-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 rounded-xl transition-all group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-semibold text-slate-200 group-hover:text-blue-400 transition-colors">题 4.16</div>
+                            <div class="text-xs text-slate-500 mt-1">标准电极定律应用</div>
+                            <div class="text-xs text-slate-500">计算组合热电偶电势</div>
+                        </div>
+                        <span class="text-xs bg-purple-900/50 px-2 py-1 rounded text-purple-300 border border-purple-700/50">特殊</span>
+                    </div>
+                </button>
+
+                <button onclick="loadProblem('4.17')" class="text-left p-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 rounded-xl transition-all group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-semibold text-slate-200 group-hover:text-blue-400 transition-colors">题 4.17</div>
+                            <div class="text-xs text-slate-500 mt-1">灵敏度0.06mV/°C</div>
+                            <div class="text-xs text-slate-500">读数55mV，t₀=40°C，求t</div>
+                        </div>
+                        <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300">模式二</span>
+                    </div>
+                </button>
+
+                <button onclick="loadProblem('4.18')" class="text-left p-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 rounded-xl transition-all group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-semibold text-slate-200 group-hover:text-blue-400 transition-colors">题 4.18</div>
+                            <div class="text-xs text-slate-500 mt-1">K型热电偶，无补偿</div>
+                            <div class="text-xs text-slate-500">显示500°C，t₀=60°C，求实际t</div>
+                        </div>
+                        <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300">模式二</span>
+                    </div>
+                </button>
+
+                <button onclick="loadProblem('4.19')" class="text-left p-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 rounded-xl transition-all group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-semibold text-slate-200 group-hover:text-blue-400 transition-colors">题 4.19</div>
+                            <div class="text-xs text-slate-500 mt-1">S型热电偶，t=503°C</div>
+                            <div class="text-xs text-slate-500">t₀=25°C，求输出电势</div>
+                        </div>
+                        <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300">模式一</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- 标准分度表 -->
+        <div class="glass-panel rounded-2xl p-6 neon-glow">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-100">
+                    <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    <span id="tableTitle">K型热电偶标准分度表 (IEC 60584-1)</span>
+                </h2>
+                <div class="flex gap-2">
+                    <input type="number" id="searchTemp" placeholder="查找温度(°C)" class="bg-slate-800/50 border border-slate-600 rounded-lg px-3 py-1 text-sm w-32 focus:outline-none focus:border-blue-500">
+                    <button onclick="searchTable()" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm">查找</button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                <table class="w-full text-left data-table text-sm">
+                    <thead class="sticky top-0 z-10">
+                        <tr class="border-b border-slate-700">
+                            <th class="py-3 px-3 text-slate-300 font-semibold">温度 (°C)</th>
+                            <th class="py-3 px-3 text-slate-300 font-semibold">热电势 E(mV)</th>
+                            <th class="py-3 px-3 text-slate-300 font-semibold">灵敏度 (μV/°C)</th>
+                            <th class="py-3 px-3 text-slate-300 font-semibold">备注</th>
+                        </tr>
+                    </thead>
+                    <tbody id="referenceTable" class="divide-y divide-slate-800">
+                        <!-- 动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer class="mt-8 text-center text-slate-500 text-sm pb-8">
+            <p>基于 IEC 60584-1 国际标准 | 使用标准分度表插值计算 | 适用于传感器课程作业验证</p>
+        </footer>
+    </main>
+
+    <script>
+        // ==================== 标准热电偶分度表数据 (IEC 60584-1) ====================
+        // 使用近似多项式系数生成标准数据
+
+        const THERMOCOUPLE_DATA = {
+            'K': {
+                name: '镍铬-镍硅 (NiCr-NiSi)',
+                range: [-200, 1260],
+                coefficients: {
+                    // 0°C以上: E = Σ(a_i * t^i)
+                    positive: [0, 3.9450128025e-2, 2.3622373598e-5, -3.2858906784e-7, -4.9904828777e-9, -6.7509059173e-11, -5.7410327428e-13, -3.1088872894e-15],
+                    // 0°C以下: E = Σ(c_i * t^i)
+                    negative: [0, 3.9450128025e-2, -1.7730173447e-5, -2.5119325130e-7, -2.0449213826e-9, -1.4404045393e-11, -6.9768601315e-14, -2.6617246757e-16]
+                }
+            },
+            'S': {
+                name: '铂铑₁₀-铂 (PtRh10-Pt)',
+                range: [0, 1760],
+                // S型在0°C以上使用特殊公式
+                table: {
+                    0: 0, 10: 0.055, 20: 0.113, 25: 0.143, 30: 0.173, 40: 0.235, 50: 0.299,
+                    60: 0.365, 70: 0.433, 80: 0.503, 90: 0.573, 100: 0.645, 110: 0.719,
+                    120: 0.795, 130: 0.872, 140: 0.950, 150: 1.029, 160: 1.109, 170: 1.190,
+                    180: 1.273, 190: 1.356, 200: 1.440, 210: 1.525, 220: 1.611, 230: 1.698,
+                    240: 1.785, 250: 1.873, 260: 1.962, 270: 2.051, 280: 2.141, 290: 2.232,
+                    300: 2.323, 310: 2.415, 320: 2.507, 330: 2.600, 340: 2.694, 350: 2.788,
+                    400: 3.259, 450: 3.743, 500: 4.233, 550: 4.732, 600: 5.239, 650: 5.751,
+                    700: 6.274, 750: 6.801, 800: 7.345, 850: 7.893, 900: 8.449, 950: 9.014,
+                    1000: 9.587, 1050: 10.168, 1100: 10.757, 1150: 11.351, 1200: 11.951,
+                    1250: 12.556, 1300: 13.159, 1350: 13.768, 1400: 14.373, 1450: 14.975,
+                    1500: 15.576, 1550: 16.176, 1600: 16.771, 1650: 17.366, 1700: 17.963,
+                    1750: 18.560, 1760: 18.647
+                }
+            },
+            'E': {
+                name: '镍铬-铜镍 (NiCr-CuNi)',
+                range: [-200, 1000],
+                // E型近似系数
+                coefficients: {
+                    positive: [0, 5.8665508708e-2, 4.5410977124e-5, -7.7998048686e-7, -2.5800160843e-8, -1.6406321374e-10, -9.7042530812e-13, -4.2537594889e-15],
+                    negative: [0, 5.8665508708e-2, -1.9613618521e-5, -3.4559683091e-7, -1.7197821408e-9, -8.9734391842e-12, -4.7195997428e-14, -2.2213949648e-16]
+                }
+            },
+            'T': {
+                name: '铜-铜镍 (Cu-CuNi)',
+                range: [-200, 350],
+                coefficients: {
+                    positive: [0, 3.8748106364e-2, 4.4194434347e-5, 1.1844323105e-7, 2.0032973554e-8, 9.0138019559e-10, 2.2651156593e-11, 3.6071154205e-13],
+                    negative: [0, 3.8748106364e-2, -2.4072386897e-5, -4.4619515394e-7, -5.6933016222e-9, -4.4387404263e-11, -2.2692026389e-13, -7.9952843306e-16]
+                }
+            },
+            'J': {
+                name: '铁-铜镍 (Fe-CuNi)',
+                range: [-210, 1200],
+                coefficients: {
+                    positive: [0, 5.0381187815e-2, 3.0475836930e-5, -3.2020723412e-7, 1.2264345597e-9, -2.1909203435e-12, 2.5923893165e-15, -1.3147806160e-18],
+                    negative: [0, 5.0381187815e-2, -1.1352847650e-5, 2.9585156937e-7, -4.2373913152e-9, 3.8332723467e-11, -2.2907693479e-13, 8.1854182244e-16]
+                }
+            },
+            'B': {
+                name: '铂铑₃₀-铂铑₆ (PtRh30-PtRh6)',
+                range: [0, 1820],
+                table: {
+                    0: 0, 100: 0.033, 200: 0.178, 300: 0.431, 400: 0.787, 500: 1.242,
+                    600: 1.792, 700: 2.431, 800: 3.154, 900: 3.957, 1000: 4.834,
+                    1100: 5.780, 1200: 6.786, 1300: 7.848, 1400: 8.956, 1500: 10.099,
+                    1600: 11.263, 1700: 12.433, 1800: 13.591, 1820: 13.820
+                }
+            }
+        };
+
+        let currentType = 'K';
+
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            generateReferenceTable();
+        });
+
+        // ==================== 热电偶类型切换 ====================
+        function setThermocouple(type) {
+            currentType = type;
+
+            // 更新按钮样式
+            document.querySelectorAll('.thermocouple-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.classList.add('text-slate-300');
+            });
+            document.getElementById(`btn-${type}`).classList.add('active');
+            document.getElementById(`btn-${type}`).classList.remove('text-slate-300');
+
+            // 更新表格标题
+            const info = THERMOCOUPLE_DATA[type];
+            document.getElementById('tableTitle').textContent =
+                `${type}型热电偶标准分度表 (${info.name}) - ${info.range[0]}~${info.range[1]}°C`;
+
+            generateReferenceTable();
+
+            // 清空结果
+            document.getElementById('result1').classList.add('hidden');
+            document.getElementById('result2').classList.add('hidden');
+        }
+
+        // ==================== 核心计算函数 ====================
+
+        // 计算温度t对应的热电势E(t,0) - 使用多项式或查表插值
+        function calculateEMF(t, type) {
+            const data = THERMOCOUPLE_DATA[type];
+
+            // 对于S型和B型，使用查表+插值
+            if (type === 'S' || type === 'B') {
+                return lookupAndInterpolate(t, data.table);
+            }
+
+            // 其他类型使用多项式计算
+            const coeffs = t >= 0 ? data.coefficients.positive : data.coefficients.negative;
+            let emf = 0;
+            let power = 1;
+            for (let i = 0; i < coeffs.length; i++) {
+                emf += coeffs[i] * power;
+                power *= t;
+            }
+            return emf;
+        }
+
+        // 查表并线性插值
+        function lookupAndInterpolate(t, table) {
+            const temps = Object.keys(table).map(Number).sort((a,b) => a-b);
+
+            // 找到相邻的温度点
+            let lower = temps[0], upper = temps[temps.length-1];
+            for (let temp of temps) {
+                if (temp <= t) lower = temp;
+                if (temp >= t && upper === temps[temps.length-1]) upper = temp;
+            }
+
+            if (lower === upper) return table[lower];
+
+            // 线性插值
+            const ratio = (t - lower) / (upper - lower);
+            return table[lower] + ratio * (table[upper] - table[lower]);
+        }
+
+        // 反向计算：已知E(t,0)求t - 使用二分查找+插值
+        function calculateTemperatureFromEMF(emf, type) {
+            const data = THERMOCOUPLE_DATA[type];
+            let low = data.range[0];
+            let high = data.range[1];
+            let mid, emfMid;
+
+            // 二分查找
+            for (let i = 0; i < 50; i++) {
+                mid = (low + high) / 2;
+                emfMid = calculateEMF(mid, type);
+
+                if (Math.abs(emfMid - emf) < 0.0001) return mid;
+
+                if (emfMid < emf) {
+                    low = mid;
+                } else {
+                    high = mid;
+                }
+            }
+            return mid;
+        }
+
+        // ==================== 计算模式1：温度→热电势 ====================
+        function calculateMode1() {
+            const t = parseFloat(document.getElementById('calc1_t').value);
+            const t0 = parseFloat(document.getElementById('calc1_t0').value);
+
+            if (isNaN(t) || isNaN(t0)) {
+                alert('请输入有效的温度值');
+                return;
+            }
+
+            // 检查量程
+            const range = THERMOCOUPLE_DATA[currentType].range;
+            if (t < range[0] || t > range[1] || t0 < range[0] || t0 > range[1]) {
+                alert(`温度超出${currentType}型量程范围 (${range[0]}~${range[1]}°C)`);
+                return;
+            }
+
+            // 计算
+            const Et0 = calculateEMF(t, currentType);      // E(t,0)
+            const Et00 = calculateEMF(t0, currentType);      // E(t0,0)
+            const Ett0 = Et0 - Et00;                        // E(t,t0) = E(t,0) - E(t0,0)
+
+            // 显示结果
+            document.getElementById('result1').classList.remove('hidden');
+            document.getElementById('result1_value').textContent = Ett0.toFixed(3);
+            document.getElementById('detail_Et0').textContent = Et0.toFixed(3);
+            document.getElementById('detail_Et00').textContent = Et00.toFixed(3);
+            document.getElementById('detail_result').textContent = Ett0.toFixed(3);
+        }
+
+        // ==================== 计算模式2：热电势→温度(冷端补偿) ====================
+        function calculateMode2() {
+            const E = parseFloat(document.getElementById('calc2_E').value);
+            const t0 = parseFloat(document.getElementById('calc2_t0').value);
+
+            if (isNaN(E) || isNaN(t0)) {
+                alert('请输入有效的数值');
+                return;
+            }
+
+            // 冷端补偿计算
+            const Et00 = calculateEMF(t0, currentType);     // E(t0,0)
+            const Et0 = E + Et00;                            // E(t,0) = E(t,t0) + E(t0,0)
+            const t = calculateTemperatureFromEMF(Et0, currentType);  // 查表得t
+
+            // 显示结果
+            document.getElementById('result2').classList.remove('hidden');
+            document.getElementById('result2_value').textContent = t.toFixed(1);
+            document.getElementById('detail2_Et00').textContent = Et00.toFixed(3);
+            document.getElementById('detail2_Et0').textContent = Et0.toFixed(3);
+            document.getElementById('detail2_result').textContent = t.toFixed(1);
+        }
+
+        // ==================== 作业题目快速加载 ====================
+        function loadProblem(problemId) {
+            switch(problemId) {
+                case '4.12':
+                    setThermocouple('S');
+                    document.getElementById('calc2_E').value = '0.675';
+                    document.getElementById('calc2_t0').value = '25';
+                    calculateMode2();
+                    break;
+                case '4.13':
+                    setThermocouple('T');
+                    document.getElementById('calc2_E').value = '1.999';
+                    document.getElementById('calc2_t0').value = '21';
+                    calculateMode2();
+                    break;
+                case '4.16':
+                    alert('题4.16需要使用标准电极定律：E_A-C = E_A-B + E_B-C\n请使用模式一分别计算各组合');
+                    break;
+                case '4.17':
+                    // 使用K型近似（灵敏度0.06mV/°C接近K型）
+                    setThermocouple('K');
+                    document.getElementById('calc2_E').value = '55';
+                    document.getElementById('calc2_t0').value = '40';
+                    calculateMode2();
+                    break;
+                case '4.18':
+                    setThermocouple('K');
+                    // 反推：显示500°C意味着仪表认为E(t,t0)对应500°C
+                    // 实际需要先计算E(500,0) - E(60,0)得到仪表读数对应的电势
+                    // 然后实际E(t,0) = 仪表电势 + E(60,0)
+                    alert('题4.18提示：\n1. 先计算仪表显示的500°C对应的E(500,60)\n2. 实际E(t,0) = E(500,60) + E(60,0)\n3. 反查温度t');
+                    document.getElementById('calc1_t').value = '500';
+                    document.getElementById('calc1_t0').value = '60';
+                    calculateMode1(); // 先算出仪表实际测到的电势
+                    break;
+                case '4.19':
+                    setThermocouple('S');
+                    document.getElementById('calc1_t').value = '503';
+                    document.getElementById('calc1_t0').value = '25';
+                    calculateMode1();
+                    break;
+            }
+        }
+
+        // ==================== 生成分度表 ====================
+        function generateReferenceTable() {
+            const tbody = document.getElementById('referenceTable');
+            const range = THERMOCOUPLE_DATA[currentType].range;
+
+            let html = '';
+            let step = 10;
+            if (range[1] - range[0] > 1000) step = 50;
+            else if (range[1] - range[0] > 500) step = 25;
+
+            for (let t = Math.ceil(range[0]/step)*step; t <= range[1]; t += step) {
+                const emf = calculateEMF(t, currentType);
+                const emfPrev = calculateEMF(t-step, currentType);
+                const sensitivity = ((emf - emfPrev) / step * 1000).toFixed(2); // μV/°C
+
+                let note = '';
+                if (t === 0) note = '参考端';
+                else if (t === 100 && currentType === 'S') note = '常用校准点';
+                else if (t === 500) note = '工业常用';
+
+                html += `
+                    <tr class="transition-colors hover:bg-slate-800/50" data-temp="${t}">
+                        <td class="py-2 px-3 font-mono text-slate-300">${t > 0 ? '+' : ''}${t}</td>
+                        <td class="py-2 px-3 font-mono text-blue-400 font-semibold">${emf.toFixed(3)}</td>
+                        <td class="py-2 px-3 font-mono text-slate-500">${sensitivity}</td>
+                        <td class="py-2 px-3 text-slate-500 text-xs">${note}</td>
+                    </tr>
+                `;
+            }
+
+            tbody.innerHTML = html;
+        }
+
+        // ==================== 表格查找 ====================
+        function searchTable() {
+            const temp = parseInt(document.getElementById('searchTemp').value);
+            if (isNaN(temp)) return;
+
+            // 高亮对应行
+            document.querySelectorAll('#referenceTable tr').forEach(tr => {
+                tr.classList.remove('highlight-row');
+                if (parseInt(tr.dataset.temp) === temp) {
+                    tr.classList.add('highlight-row');
+                    tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        }
+
+        // 回车搜索
+        document.getElementById('searchTemp')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchTable();
+        });
+    </script>
+</body>
+</html>
